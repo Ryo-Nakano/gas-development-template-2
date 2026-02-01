@@ -1,0 +1,23 @@
+{
+  "name": "gas-template",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "vite build",
+    "build:watch": "vite build --watch",
+    "push": "clasp push",
+    "push:watch": "clasp push --watch",
+    "deploy": "vite build && clasp push"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@google/clasp": "^2.4.1"
+  },
+  "dependencies": {
+    "rollup-plugin-google-apps-script": "^1.1.13",
+    "vite": "^4.5.3"
+  }
+}
