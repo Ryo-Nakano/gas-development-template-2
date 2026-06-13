@@ -1,4 +1,4 @@
-import { SheetUtils } from "utils/sheet_utils";
+import { SheetUtils } from "@/utils/sheet_utils";
 
 /**
  * 基本的な操作を提供するクラス。継承して具体的な操作を実装します。
@@ -13,7 +13,7 @@ export class BaseOperation {
   }
 
   /**
-   * 操作を実行するメソッド。インスタンスから呼び出され、操作中にエラーが発生した場合はキャッチして再スローします。
+   * 操作を実行するメソッド。インスタンスから呼び出され、操作中にエラーが発生した場合はログに記録して再スローします。
    * @return {*} _operationメソッドの戻り値を返します。
    * @throws {Error} 操作中に発生したエラーを再スローします。
    */
@@ -21,7 +21,7 @@ export class BaseOperation {
     try {
       return this._operation();
     } catch (error) {
-      // エラーキャッチ時にする処理
+      console.error(error);
       throw error;
     }
   }

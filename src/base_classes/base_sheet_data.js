@@ -1,4 +1,4 @@
-import { SheetUtils } from "utils/sheet_utils";
+import { SheetUtils } from "@/utils/sheet_utils";
 
 /**
  * シートに関連するデータを操作する基底クラス。継承して具体的な実装を行います。
