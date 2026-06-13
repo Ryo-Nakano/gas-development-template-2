@@ -44,9 +44,9 @@ export class BaseApiClient {
   request(endpoint) {
     const isValidMethod = Object.values(METHODS).includes(endpoint.method);
     if (!isValidMethod || !endpoint.path) {
-      throw new Error('invalid request');
+      throw new Error(`invalid request: ${endpoint.method} ${endpoint.path}`);
     }
-    return this._methods[endpoint.method]({
+    return this._fetch(endpoint.method, {
       path: endpoint.path,
       headers: endpoint.headers || {},
       params: endpoint.params || {},
@@ -55,107 +55,34 @@ export class BaseApiClient {
   }
 
   /**
-   * HTTPメソッドと対応する内部メソッドのマッピング
-   * @returns {Object}
-   * @private
-   */
-  get _methods() {
-    return {
-      [METHODS.POST]: this._post.bind(this),
-      [METHODS.GET]: this._get.bind(this),
-      [METHODS.PUT]: this._put.bind(this),
-      [METHODS.PATCH]: this._patch.bind(this),
-      [METHODS.DELETE]: this._delete.bind(this),
-    };
-  }
-
-  /**
-   * POSTリクエストを実行する
+   * HTTPリクエストを実行する。GETはクエリパラメータ、それ以外はJSONボディを送信する。
+   * @param {string} method - HTTPメソッド（METHODSのいずれか）
    * @param {Object} params
    * @param {string} params.path - パス
    * @param {Object} [params.headers] - 追加ヘッダー
-   * @param {Object} [params.payload] - リクエストボディ
-   * @returns {Object}
+   * @param {Object} [params.params] - クエリパラメータ（GETのみ使用）
+   * @param {Object} [params.payload] - リクエストボディ（GET以外で使用）
+   * @returns {Object} レスポンス { status, data }
    * @private
    */
-  _post({ path, headers = {}, payload = {} }) {
-    const url = this._buildUrl(path);
-    const res = UrlFetchApp.fetch(url, {
-      method: METHODS.POST,
-      headers: { ...this._BASE_HEADERS, ...headers },
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-    });
-    return this._serialize(res);
-  }
-
-  /**
-   * GETリクエストを実行する
-   * @param {Object} params
-   * @param {string} params.path - パス
-   * @param {Object} [params.headers] - 追加ヘッダー
-   * @param {Object} [params.params] - クエリパラメータ
-   * @returns {Object}
-   * @private
-   */
-  _get({ path, headers = {}, params = {} }) {
+  _fetch(method, { path, headers = {}, params = {}, payload = {} }) {
     let url = this._buildUrl(path);
-    const queryString = this._buildQueryString(params);
-    if (queryString) {
-      url = `${url}?${queryString}`;
+    const options = {
+      method,
+      headers: { ...this._BASE_HEADERS, ...headers },
+    };
+
+    if (method === METHODS.GET) {
+      const queryString = this._buildQueryString(params);
+      if (queryString) {
+        url = `${url}?${queryString}`;
+      }
+    } else {
+      options.contentType = 'application/json';
+      options.payload = JSON.stringify(payload);
     }
-    const res = UrlFetchApp.fetch(url, {
-      method: METHODS.GET,
-      headers: { ...this._BASE_HEADERS, ...headers },
-    });
-    return this._serialize(res);
-  }
 
-  /**
-   * PUTリクエストを実行する
-   * @param {Object} params
-   * @private
-   */
-  _put({ path, headers = {}, payload = {} }) {
-    const url = this._buildUrl(path);
-    const res = UrlFetchApp.fetch(url, {
-      method: METHODS.PUT,
-      headers: { ...this._BASE_HEADERS, ...headers },
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-    });
-    return this._serialize(res);
-  }
-
-  /**
-   * PATCHリクエストを実行する
-   * @param {Object} params
-   * @private
-   */
-  _patch({ path, headers = {}, payload = {} }) {
-    const url = this._buildUrl(path);
-    const res = UrlFetchApp.fetch(url, {
-      method: METHODS.PATCH,
-      headers: { ...this._BASE_HEADERS, ...headers },
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-    });
-    return this._serialize(res);
-  }
-
-  /**
-   * DELETEリクエストを実行する
-   * @param {Object} params
-   * @private
-   */
-  _delete({ path, headers = {}, payload = {} }) {
-    const url = this._buildUrl(path);
-    const res = UrlFetchApp.fetch(url, {
-      method: METHODS.DELETE,
-      headers: { ...this._BASE_HEADERS, ...headers },
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-    });
+    const res = UrlFetchApp.fetch(url, options);
     return this._serialize(res);
   }
 

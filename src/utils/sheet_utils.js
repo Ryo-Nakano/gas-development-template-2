@@ -9,16 +9,12 @@ export class SheetUtils {
    * @return {Object|null} 名前付き範囲の名前と列番号のペアを持つオブジェクト。名前付き範囲が存在しない場合は null を返します。
    */
   static getNamedRangeColsOf(sheet) {
-    if(!sheet) return null;
-
-    const namedRanges = sheet.getNamedRanges();
-    if(!namedRanges.length) return null;
+    const namedRanges = this.getNamedRangesOf(sheet);
+    if(!namedRanges) return null;
 
     // {name: rangeCol} 形式のオブジェクトにして返す
-    return namedRanges.reduce((acc, namedRange) => {
-      const name = namedRange.getName();
-      const rangeCol = namedRange.getRange().getColumn();
-      acc[name] = rangeCol;
+    return Object.entries(namedRanges).reduce((acc, [name, range]) => {
+      acc[name] = range.getColumn();
       return acc;
     }, {});
   }
