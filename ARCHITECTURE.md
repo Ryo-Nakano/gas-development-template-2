@@ -145,42 +145,108 @@ export class XxxData extends BoundSheetData {
 ### 2.3 APIクライアントパターン
 
 外部APIの呼び出しは `BaseApiClient` を継承したクラスで行います。
-ベースURLと共通ヘッダーをオーバーライドし、エンドポイント定義を `request()` に渡します。
+このパターンは **2つの要素**で構成します。
+
+1. **APIクライアントクラス**: `_BASE_URL` と `_BASE_HEADERS` をオーバーライドするだけの薄いクラス
+2. **エンドポイント定義一覧**: 各エンドポイントを「引数を受け取り、リクエスト定義オブジェクトを返すファクトリ関数」として `XXX_API` のようなオブジェクトにまとめる
+
+クラスにはHTTP通信の共通設定だけを持たせ、「どのAPIにどんなリクエストを送るか」はエンドポイント定義一覧にデータとして集約します。これにより、APIの全エンドポイントが1箇所に宣言的に並び、追加・変更・レビューが容易になります。
+
+#### 1. APIクライアントクラス
 
 ```javascript
-// src/api_clients/xxx_api_client.js
-import { BaseApiClient, METHODS } from "@/base_classes/base_api_client";
+// src/api_clients/sample_api_client.js
+import { BaseApiClient } from "@/base_classes/base_api_client";
+import { SAMPLE } from "@/constants";
 
-export class XxxApiClient extends BaseApiClient {
+/**
+ * サンプルAPIクライアント
+ */
+export class SampleApiClient extends BaseApiClient {
+  /**
+   * ベースURL
+   * @returns {string}
+   */
   get _BASE_URL() {
     return 'https://api.example.com';
   }
 
-  get _BASE_HEADERS() {
-    return { Authorization: `Bearer ${this._token}` };
-  }
-
   /**
-   * ユーザー一覧を取得する
-   * @returns {Object} レスポンス { status, data }
+   * ベースヘッダー
+   * @returns {Object}
    */
-  fetchUsers() {
-    return this.request({
-      method: METHODS.GET,
-      path: '/users',
-      params: { limit: 100 },
-    });
+  get _BASE_HEADERS() {
+    return {
+      'Content-Type': 'application/json; charset=UTF-8',
+      'Authorization': `Bearer ${SAMPLE.ACCESS_TOKEN}`,
+    };
   }
 }
+```
+
+#### 2. エンドポイント定義一覧
+
+各エンドポイントは、必要な引数を受け取って `request()` に渡せるリクエスト定義オブジェクト（`method` / `path` / `payload` / `params` など）を返すファクトリ関数として定義します。
+
+```javascript
+// src/api_clients/sample_api_client.js（同ファイル末尾に定義）
+import { BaseApiClient, METHODS } from "@/base_classes/base_api_client";
+
+/**
+ * サンプルAPI エンドポイント定義
+ */
+export const SAMPLE_ENDPOINTS = {
+  users: {
+    /**
+     * ユーザー一覧を取得する
+     * @param {Object} params
+     * @param {number} params.limit - 取得件数
+     * @returns {Object} リクエスト定義
+     */
+    list: ({ limit }) => ({
+      method: METHODS.GET,
+      path: '/users',
+      params: { limit },
+    }),
+
+    /**
+     * ユーザーを作成する
+     * @param {Object} params
+     * @param {string} params.name - ユーザー名
+     * @returns {Object} リクエスト定義
+     */
+    create: ({ name }) => ({
+      method: METHODS.POST,
+      path: '/users',
+      payload: { name },
+    }),
+  },
+};
+```
+
+#### 3. 利用側（Operation など）
+
+クライアントをインスタンス化し、エンドポイント定義を `request()` に渡します。
+
+```javascript
+import { SampleApiClient, SAMPLE_ENDPOINTS } from "@/api_clients/sample_api_client";
+
+const client = new SampleApiClient();
+
+// エンドポイント定義のファクトリに引数を渡し、その戻り値を request() に渡す
+const res = client.request(SAMPLE_ENDPOINTS.users.create({ name: 'taro' }));
+// res は { status, data } 形式
 ```
 
 #### BaseApiClient の規則
 
 1. `_BASE_URL` / `_BASE_HEADERS` のオーバーライドは**必須**
-2. リクエストは `request({ method, path, headers, params, payload })` で実行する
-3. `method` は `METHODS` 定数（`METHODS.GET` など）を使用し、文字列をハードコーディングしない
-4. GET はクエリパラメータ（`params`）、それ以外は JSON ボディ（`payload`）を送信する
-5. レスポンスは `{ status, data }` 形式（`data` はパース済みJSON）
+2. エンドポイントは `XXX_API` オブジェクトにファクトリ関数として集約し、リクエスト定義（プレーンオブジェクト）を返す
+3. リクエストは `client.request({ method, path, headers, params, payload })` で実行する
+4. `method` は `METHODS` 定数（`METHODS.POST` など）を使用し、文字列をハードコーディングしない
+5. GET はクエリパラメータ（`params`）、それ以外は JSON ボディ（`payload`）を送信する
+6. レスポンスは `{ status, data }` 形式（`data` はパース済みJSON）
+7. 頻繁に使うエンドポイントは、クライアントに薄いファサードメソッド（中身は `return this.request(XXX_API....)` の1行）を生やしてもよい。ただしエンドポイント定義一覧は残し、全エンドポイント分の自動生成のような追跡しづらい仕組みは避ける
 
 ### 2.4 ユーティリティパターン
 
